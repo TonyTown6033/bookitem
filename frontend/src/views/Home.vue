@@ -36,23 +36,30 @@
     </el-card>
 
     <el-row :gutter="20" class="feature-row">
-      <el-col :span="8">
-        <el-card shadow="hover" class="feature-card" @click="$router.push('/rooms')">
-          <el-icon size="48" color="#409EFF"><OfficeBuilding /></el-icon>
-          <h3>会议室管理</h3>
-          <p>添加、编辑和管理会议室信息</p>
+      <el-col :span="6">
+        <el-card shadow="hover" class="feature-card highlight" @click="$router.push('/booking')">
+          <el-icon size="48" color="#409EFF"><Calendar /></el-icon>
+          <h3>会议室预约</h3>
+          <p>可视化时间轴，快速预约会议室</p>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="feature-card" @click="$router.push('/bookings')">
           <el-icon size="48" color="#67C23A"><Document /></el-icon>
-          <h3>预约管理</h3>
-          <p>创建和管理会议室预约</p>
+          <h3>预约记录</h3>
+          <p>查看和管理所有预约记录</p>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
+        <el-card shadow="hover" class="feature-card" @click="$router.push('/rooms')">
+          <el-icon size="48" color="#E6A23C"><OfficeBuilding /></el-icon>
+          <h3>会议室管理</h3>
+          <p>添加、编辑和管理会议室</p>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
         <el-card shadow="hover" class="feature-card" @click="$router.push('/users')">
-          <el-icon size="48" color="#E6A23C"><User /></el-icon>
+          <el-icon size="48" color="#909399"><User /></el-icon>
           <h3>用户管理</h3>
           <p>管理系统用户信息</p>
         </el-card>
@@ -138,12 +145,22 @@ onMounted(() => {
 .feature-card {
   text-align: center;
   cursor: pointer;
-  transition: transform 0.3s;
+  transition: all 0.3s;
   padding: 30px 20px;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.feature-card.highlight {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #409EFF;
+}
+
+.feature-card.highlight:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
 }
 
 .feature-card h3 {

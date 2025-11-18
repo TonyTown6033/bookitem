@@ -17,8 +17,9 @@
             active-text-color="#ffd04b"
           >
             <el-menu-item index="/">首页</el-menu-item>
+            <el-menu-item index="/booking">会议室预约</el-menu-item>
+            <el-menu-item index="/bookings">预约记录</el-menu-item>
             <el-menu-item index="/rooms">会议室管理</el-menu-item>
-            <el-menu-item index="/bookings">预约管理</el-menu-item>
             <el-menu-item index="/users">用户管理</el-menu-item>
           </el-menu>
         </div>
