@@ -31,12 +31,12 @@
         class="timeline-track"
         @click="handleTimelineClick"
         @mousemove="handleTimelineMove"
-        @mouseleave="previewEnd = null"
+        @mouseleave="clearPreview"
       >
         <!-- 时间格子背景（48个半小时格子） -->
         <div class="time-cells">
           <div 
-            v-for="cell in 48" 
+            v-for="cell in TIME_CONSTANTS.TOTAL_TIME_CELLS" 
             :key="cell" 
             class="time-cell"
             :class="{ 
@@ -52,7 +52,7 @@
         <div
           v-if="pastTimeSlot"
           class="past-time-slot"
-          :style="getSlotStyle(pastTimeSlot.start, pastTimeSlot.end)"
+          :style="getSlotStyleWrapper(pastTimeSlot.start, pastTimeSlot.end)"
           title="过去的时间不可预约"
         >
           <div class="slot-overlay">
@@ -66,7 +66,7 @@
           v-for="booking in bookedSlots"
           :key="booking.id"
           class="booked-slot"
-          :style="getSlotStyle(booking.start, booking.end)"
+          :style="getSlotStyleWrapper(booking.start, booking.end)"
           :title="`${booking.user.username} - ${booking.purpose || '会议'}`"
         >
           <div class="booking-content">
@@ -87,7 +87,7 @@
         <div
           v-if="firstClickPoint && !selectedSlot"
           class="first-click-marker"
-          :style="getMarkerStyle(firstClickPoint)"
+          :style="getMarkerStyleWrapper(firstClickPoint)"
         >
           <div class="marker-dot"></div>
           <div class="marker-time">{{ formatTime(firstClickPoint) }}</div>
@@ -98,7 +98,7 @@
           v-if="firstClickPoint && previewEnd && !selectedSlot"
           class="preview-slot"
           :class="{ invalid: !isValidSelection }"
-          :style="getSlotStyle(selectionStart, selectionEnd)"
+          :style="getSlotStyleWrapper(selectionStart, selectionEnd)"
         >
           <div class="preview-content">
             <span class="preview-time">
@@ -115,7 +115,7 @@
           v-if="selectedSlot"
           class="selected-slot"
           :class="{ invalid: !isValidSelection }"
-          :style="getSlotStyle(selectionStart, selectionEnd)"
+          :style="getSlotStyleWrapper(selectionStart, selectionEnd)"
         >
           <div class="selection-content">
             <el-icon class="selection-icon"><Calendar /></el-icon>
@@ -152,8 +152,24 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import { Clock, UserFilled, Calendar, InfoFilled } from '@element-plus/icons-vue'
+
+// Composables
+import { useBookingData } from '@/composables/useBookingData'
+import { useTimelineSelection } from '@/composables/useTimelineSelection'
+
+// Utils
+import {
+  TIME_CONSTANTS,
+  formatHour,
+  formatTime,
+  getCellTime,
+  getTimeDuration,
+  getDayStart,
+  getSlotStyle,
+  getMarkerStyle,
+  disabledDate
+} from '@/utils/timeUtils'
 
 const props = defineProps({
   room: {
@@ -168,192 +184,41 @@ const props = defineProps({
 
 const emit = defineEmits(['create-booking', 'refresh'])
 
+// 基础状态
 const selectedDate = ref(new Date())
-const selecting = ref(false)
-const selectedSlot = ref(null)
-const selectionStart = ref(null)
-const selectionEnd = ref(null)
-const mouseDownTime = ref(null)
-const firstClickPoint = ref(null) // 第一次点击的点
-const previewEnd = ref(null) // 鼠标移动时的预览终点
 
-// 计算过去的时间段
-const pastTimeSlot = computed(() => {
-  if (!selectedDate.value) return null
-  
-  const now = new Date()
-  const dateStart = new Date(selectedDate.value)
-  dateStart.setHours(0, 0, 0, 0)
-  
-  const dateEnd = new Date(selectedDate.value)
-  dateEnd.setHours(23, 59, 59, 999)
-  
-  // 如果选择的是今天，显示当前时间之前的部分
-  if (dateStart.toDateString() === now.toDateString()) {
-    return {
-      start: dateStart,
-      end: now
-    }
-  }
-  
-  // 如果选择的是过去的日期，整天都是灰色
-  if (dateStart < now) {
-    return {
-      start: dateStart,
-      end: dateEnd
-    }
-  }
-  
-  return null
-})
+// 使用预约数据 Composable
+const { pastTimeSlot, bookedSlots } = useBookingData(selectedDate, computed(() => props.bookings))
 
-// 过滤当前日期的预约
-const bookedSlots = computed(() => {
-  if (!selectedDate.value) return []
-  
-  const dateStr = selectedDate.value.toDateString()
-  return props.bookings.filter(booking => {
-    if (booking.status === 'cancelled') return false
-    const bookingDate = new Date(booking.start_time).toDateString()
-    return bookingDate === dateStr
-  }).map(booking => ({
-    ...booking,
-    start: new Date(booking.start_time),
-    end: new Date(booking.end_time)
-  }))
-})
+// 使用时间轴选择 Composable
+const {
+  selecting,
+  selectedSlot,
+  selectionStart,
+  selectionEnd,
+  firstClickPoint,
+  previewEnd,
+  isValidSelection,
+  handleTimelineClick,
+  handleTimelineMove,
+  clearPreview,
+  clearSelection
+} = useTimelineSelection(selectedDate, bookedSlots, pastTimeSlot)
 
-// 检查选择是否有效（不与已有预约冲突，不在过去）
-const isValidSelection = computed(() => {
-  if (!selectionStart.value || !selectionEnd.value) return false
-  if (selectionStart.value >= selectionEnd.value) return false
-  
-  // 检查是否在过去的时间
-  const now = new Date()
-  if (selectionStart.value < now) return false
-  
-  // 检查是否与过去的时间段重叠
-  if (pastTimeSlot.value) {
-    const pastStart = pastTimeSlot.value.start
-    const pastEnd = pastTimeSlot.value.end
-    
-    if (
-      (selectionStart.value >= pastStart && selectionStart.value < pastEnd) ||
-      (selectionEnd.value > pastStart && selectionEnd.value <= pastEnd) ||
-      (selectionStart.value <= pastStart && selectionEnd.value >= pastEnd)
-    ) {
-      return false
-    }
-  }
-  
-  // 检查是否与已有预约冲突
-  return !bookedSlots.value.some(booking => {
-    return (
-      (selectionStart.value >= booking.start && selectionStart.value < booking.end) ||
-      (selectionEnd.value > booking.start && selectionEnd.value <= booking.end) ||
-      (selectionStart.value <= booking.start && selectionEnd.value >= booking.end)
-    )
-  })
-})
-
-// 禁用过去的日期
-const disabledDate = (time) => {
-  return time.getTime() < Date.now() - 8.64e7
+// 包装样式函数，传入 dayStart
+const getSlotStyleWrapper = (start, end) => {
+  const dayStart = getDayStart(selectedDate.value)
+  return getSlotStyle(start, end, dayStart)
 }
 
-// 处理时间轴点击
-const handleTimelineClick = (e) => {
-  if (!selectedDate.value) return
-  
-  const timelineRect = e.currentTarget.getBoundingClientRect()
-  const x = e.clientX - timelineRect.left
-  const time = getTimeFromPosition(x, timelineRect.width)
-  
-  // 如果是第一次点击
-  if (!firstClickPoint.value) {
-    firstClickPoint.value = time
-    selectionStart.value = time
-    selectionEnd.value = time
-    selecting.value = true
-    selectedSlot.value = null
-    ElMessage.info('请点击第二个位置确定时间区间', { duration: 2000 })
-  } else {
-    // 第二次点击，确定区间
-    let start = firstClickPoint.value
-    let end = time
-    
-    // 确保开始时间小于结束时间
-    if (start > end) {
-      [start, end] = [end, start]
-    }
-    
-    // 检查最小时长（30分钟）
-    const minDuration = 30 * 60 * 1000 // 30分钟
-    if (end - start < minDuration) {
-      ElMessage.warning('预约时长至少为30分钟')
-      clearSelection()
-      return
-    }
-    
-    selectionStart.value = start
-    selectionEnd.value = end
-    
-    if (isValidSelection.value) {
-      selectedSlot.value = {
-        start: start,
-        end: end
-      }
-      // 完成选择后清除第一次点击的状态
-      firstClickPoint.value = null
-      previewEnd.value = null
-      selecting.value = false
-    } else {
-      ElMessage.warning('所选时间段有冲突，请重新选择')
-      clearSelection()
-    }
-  }
+const getMarkerStyleWrapper = (time) => {
+  const dayStart = getDayStart(selectedDate.value)
+  return getMarkerStyle(time, dayStart)
 }
 
-// 处理鼠标移动（显示预览）
-const handleTimelineMove = (e) => {
-  if (!firstClickPoint.value || !selectedDate.value) return
-  
-  const timelineRect = e.currentTarget.getBoundingClientRect()
-  const x = e.clientX - timelineRect.left
-  const time = getTimeFromPosition(x, timelineRect.width)
-  
-  previewEnd.value = time
-  
-  // 更新预览区间
-  let start = firstClickPoint.value
-  let end = time
-  
-  if (start > end) {
-    [start, end] = [end, start]
-  }
-  
-  selectionStart.value = start
-  selectionEnd.value = end
-}
-
-// 取消选择（点击外部或ESC键）
-const cancelSelection = () => {
-  firstClickPoint.value = null
-  previewEnd.value = null
-  selecting.value = false
-  selectionStart.value = null
-  selectionEnd.value = null
-  selectedSlot.value = null
-}
-
-// 清除选择
-const clearSelection = () => {
-  selectedSlot.value = null
-  selectionStart.value = null
-  selectionEnd.value = null
-  firstClickPoint.value = null
-  previewEnd.value = null
-  selecting.value = false
+// 获取选择的时长
+const getSelectionDuration = () => {
+  return getTimeDuration(selectionStart.value, selectionEnd.value)
 }
 
 // 确认预约
@@ -365,88 +230,6 @@ const confirmBooking = () => {
     start_time: selectionStart.value,
     end_time: selectionEnd.value
   })
-}
-
-// 从位置计算时间
-const getTimeFromPosition = (x, width) => {
-  const ratio = Math.max(0, Math.min(1, x / width))
-  const date = new Date(selectedDate.value)
-  const minutes = Math.round(ratio * 24 * 60 / 30) * 30 // 30分钟为单位（半小时）
-  date.setHours(0, 0, 0, 0)
-  date.setMinutes(minutes)
-  return date
-}
-
-// 获取时间段样式
-const getSlotStyle = (start, end) => {
-  if (!start || !end) return {}
-  
-  const dayStart = new Date(selectedDate.value)
-  dayStart.setHours(0, 0, 0, 0)
-  
-  const startMinutes = (start - dayStart) / (1000 * 60)
-  const endMinutes = (end - dayStart) / (1000 * 60)
-  
-  const left = (startMinutes / (24 * 60)) * 100
-  const width = ((endMinutes - startMinutes) / (24 * 60)) * 100
-  
-  return {
-    left: `${left}%`,
-    width: `${width}%`
-  }
-}
-
-// 计算标记点样式
-const getMarkerStyle = (time) => {
-  if (!time || !selectedDate.value) return {}
-  
-  const dayStart = new Date(selectedDate.value)
-  dayStart.setHours(0, 0, 0, 0)
-  
-  const timeMinutes = (time - dayStart) / (1000 * 60)
-  const left = (timeMinutes / (24 * 60)) * 100
-  
-  return {
-    left: `${left}%`
-  }
-}
-
-// 格式化小时
-const formatHour = (hour) => {
-  return `${hour.toString().padStart(2, '0')}:00`
-}
-
-// 格式化时间
-const formatTime = (date) => {
-  if (!date) return ''
-  return date.toLocaleTimeString('zh-CN', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: false 
-  })
-}
-
-// 获取格子显示的时间
-const getCellTime = (cellIndex) => {
-  const totalMinutes = (cellIndex - 1) * 30
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-}
-
-// 获取选择的时长
-const getSelectionDuration = () => {
-  if (!selectionStart.value || !selectionEnd.value) return ''
-  const minutes = (selectionEnd.value - selectionStart.value) / (1000 * 60)
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours > 0 && mins > 0) {
-    return `${hours}小时${mins}分钟`
-  } else if (hours > 0) {
-    return `${hours}小时`
-  } else {
-    return `${mins}分钟`
-  }
 }
 
 // 加载预约数据
