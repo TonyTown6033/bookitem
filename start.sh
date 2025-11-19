@@ -65,6 +65,29 @@ cd ..
 echo "📦 启动前端服务 (Vue3)..."
 cd frontend
 
+# 检查 Node.js 版本
+if command -v node &> /dev/null; then
+    NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
+    if [ "$NODE_VERSION" -lt 18 ]; then
+        echo "❌ 错误: Node.js 版本过低 (当前: v$NODE_VERSION, 需要: v18+)"
+        echo ""
+        echo "解决方案："
+        echo "  1. 使用 nvm 安装 Node.js 18+:"
+        echo "     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+        echo "     source ~/.bashrc  # 或 source ~/.zshrc"
+        echo "     nvm install 18"
+        echo "     nvm use 18"
+        echo ""
+        echo "  2. 或者从官网下载: https://nodejs.org/"
+        exit 1
+    fi
+    echo "✓ Node.js 版本: $(node --version)"
+else
+    echo "❌ 错误: Node.js 未安装"
+    echo "请先安装 Node.js 18+: https://nodejs.org/"
+    exit 1
+fi
+
 # 检查 npm 是否安装
 if ! command -v npm &> /dev/null; then
     echo "❌ 错误: npm 未安装"
