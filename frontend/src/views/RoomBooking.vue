@@ -10,7 +10,10 @@
           </el-button>
         </div>
       </template>
-      <p class="intro">选择会议室，然后在时间轴上拖动选择时间段进行预约</p>
+      <p class="intro">
+        <span class="intro-desktop">选择会议室，然后在时间轴上拖动选择时间段进行预约</span>
+        <span class="intro-mobile">点击会议室选择时间</span>
+      </p>
     </el-card>
 
     <!-- 会议室列表 -->
@@ -360,6 +363,14 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
+.intro-mobile {
+  display: none;
+}
+
+.intro-desktop {
+  display: inline;
+}
+
 .rooms-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -491,6 +502,7 @@ onMounted(() => {
 .timeline-wrapper {
   grid-column: 1 / -1;
   margin: -12px 0 12px 0;
+  animation: timeline-slide-down 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .timeline-card {
@@ -559,6 +571,17 @@ onMounted(() => {
     opacity: 0;
     transform: translateY(-20px) scaleY(0.8);
     max-height: 0;
+  }
+}
+
+@keyframes timeline-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -668,87 +691,209 @@ onMounted(() => {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .room-booking-page {
-    padding: 16px;
+    padding: 12px;
+    background: #f5f7fa;
   }
   
   .header-card {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
   
   .header-card :deep(.el-card__header) {
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
   
   .header-card :deep(.el-card__body) {
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
   
   .card-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    font-size: 16px;
+  }
+  
+  .card-header span {
+    flex: 1;
+    font-size: 16px;
   }
   
   .card-header .el-button {
-    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .card-header .el-button .el-icon {
+    font-size: 14px;
   }
   
   .intro {
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  
+  .intro-mobile {
+    display: inline;
+  }
+  
+  .intro-desktop {
+    display: none;
   }
   
   .rooms-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .room-item {
+    width: 100%;
+    max-width: 100%;
   }
   
   .room-card {
-    border-radius: 12px;
+    border-radius: 10px;
     border-width: 2px;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .room-card :deep(.el-card__body) {
+    padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .room-card:hover {
+    transform: none;
+  }
+  
+  .room-card.selected {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .room-card.selected:hover {
+    transform: none;
+  }
+  
+  .room-header {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    flex-direction: row;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
   }
   
   .room-header .el-icon {
-    font-size: 36px;
+    font-size: 24px !important;
+    flex-shrink: 0;
   }
   
   .room-header h3 {
-    font-size: 18px;
+    font-size: 15px;
+    margin: 0;
+  }
+  
+  .room-card.selected .room-header {
+    margin: -12px -12px 10px -12px;
+    padding: 10px 12px;
   }
   
   .room-details {
-    padding: 0 12px;
+    padding: 0;
   }
   
   .room-details p {
+    font-size: 12px;
+    margin: 6px 0;
+  }
+  
+  .room-details .el-icon {
     font-size: 14px;
   }
   
   .room-details .description {
-    font-size: 13px;
+    font-size: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .room-footer {
+    padding: 8px 0 0 0;
+    justify-content: flex-start;
+  }
+  
+  .room-footer .el-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    height: auto;
   }
   
   .timeline-wrapper {
-    margin: 0 0 16px 0;
+    margin: 0 0 12px 0;
   }
   
   .timeline-card {
-    border-radius: 12px;
+    border-radius: 10px;
     border-width: 2px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.12);
   }
   
   .timeline-card :deep(.el-card__header) {
-    padding: 16px 20px;
-    font-size: 16px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  .timeline-card :deep(.el-card__body) {
+    padding: 0;
   }
   
   .timeline-header {
-    font-size: 16px;
+    font-size: 14px;
+  }
+  
+  .timeline-header .el-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  :deep(.el-dialog__header) {
+    padding: 16px 20px 12px;
+  }
+  
+  :deep(.el-dialog__title) {
+    font-size: 18px;
   }
   
   :deep(.el-dialog__body) {
-    padding: 20px 16px;
+    padding: 16px;
+  }
+  
+  :deep(.el-form-item) {
+    margin-bottom: 16px;
+  }
+  
+  :deep(.el-form-item__label) {
+    font-size: 13px;
+    padding-bottom: 4px;
+  }
+  
+  :deep(.el-button) {
+    padding: 10px 20px;
+    font-size: 14px;
   }
 }
 

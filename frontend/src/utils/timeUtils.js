@@ -13,7 +13,10 @@ export const TIME_CONSTANTS = {
   MILLISECONDS_PER_DAY: 24 * 60 * 60 * 1000,
   MIN_BOOKING_DURATION: 30, // 分钟
   TIME_SLOT_UNIT: 30, // 半小时为单位
-  TOTAL_TIME_CELLS: 48 // 24小时 * 2（每小时两个格子）
+  START_HOUR: 8, // 时间轴开始时间（早上8点）
+  END_HOUR: 24, // 时间轴结束时间（晚上24点）
+  WORKING_HOURS: 16, // 工作时长（8:00-24:00，共16小时）
+  TOTAL_TIME_CELLS: 32 // 16小时 * 2（每小时两个格子）
 }
 
 /**
@@ -49,12 +52,12 @@ export function formatDateTime(dateString) {
 }
 
 /**
- * 获取格子显示的时间（用于48格时间轴）
- * @param {number} cellIndex - 格子索引（1-48）
+ * 获取格子显示的时间（用于时间轴）
+ * @param {number} cellIndex - 格子索引（1-32，从8:00开始）
  * @returns {string} 格式化后的时间字符串
  */
 export function getCellTime(cellIndex) {
-  const totalMinutes = (cellIndex - 1) * TIME_CONSTANTS.TIME_SLOT_UNIT
+  const totalMinutes = (cellIndex - 1) * TIME_CONSTANTS.TIME_SLOT_UNIT + TIME_CONSTANTS.START_HOUR * TIME_CONSTANTS.MINUTES_PER_HOUR
   const hours = Math.floor(totalMinutes / TIME_CONSTANTS.MINUTES_PER_HOUR)
   const minutes = totalMinutes % TIME_CONSTANTS.MINUTES_PER_HOUR
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
@@ -83,13 +86,13 @@ export function getTimeDuration(startTime, endTime) {
 }
 
 /**
- * 获取一天的开始时间
+ * 获取一天的开始时间（时间轴开始时间）
  * @param {Date} date - 日期
- * @returns {Date} 该日期的 00:00:00
+ * @returns {Date} 该日期的 08:00:00
  */
 export function getDayStart(date) {
   const dayStart = new Date(date)
-  dayStart.setHours(0, 0, 0, 0)
+  dayStart.setHours(TIME_CONSTANTS.START_HOUR, 0, 0, 0)
   return dayStart
 }
 
@@ -128,36 +131,38 @@ export function disabledDate(time) {
  * @param {number} x - 鼠标 x 坐标
  * @param {number} width - 时间轴宽度
  * @param {Date} selectedDate - 选中的日期
- * @returns {Date} 计算出的时间
+ * @returns {Date} 计算出的时间（8:00-24:00范围内）
  */
 export function getTimeFromPosition(x, width, selectedDate) {
   const ratio = Math.max(0, Math.min(1, x / width))
-  const minutes = Math.round(
-    ratio * TIME_CONSTANTS.MINUTES_PER_DAY / TIME_CONSTANTS.TIME_SLOT_UNIT
+  const workingMinutes = TIME_CONSTANTS.WORKING_HOURS * TIME_CONSTANTS.MINUTES_PER_HOUR
+  const minutesFromStart = Math.round(
+    ratio * workingMinutes / TIME_CONSTANTS.TIME_SLOT_UNIT
   ) * TIME_CONSTANTS.TIME_SLOT_UNIT
   
   const date = new Date(selectedDate)
-  date.setHours(0, 0, 0, 0)
-  date.setMinutes(minutes)
+  date.setHours(TIME_CONSTANTS.START_HOUR, 0, 0, 0)
+  date.setMinutes(minutesFromStart)
   return date
 }
 
 /**
- * 计算时间在一天中的位置百分比
+ * 计算时间在时间轴中的位置百分比
  * @param {Date} time - 时间
- * @param {Date} dayStart - 一天的开始时间
+ * @param {Date} dayStart - 时间轴开始时间（8:00）
  * @returns {number} 百分比（0-100）
  */
 export function getTimePosition(time, dayStart) {
   const timeMinutes = (time - dayStart) / TIME_CONSTANTS.MILLISECONDS_PER_MINUTE
-  return (timeMinutes / TIME_CONSTANTS.MINUTES_PER_DAY) * 100
+  const workingMinutes = TIME_CONSTANTS.WORKING_HOURS * TIME_CONSTANTS.MINUTES_PER_HOUR
+  return (timeMinutes / workingMinutes) * 100
 }
 
 /**
  * 获取时间段样式（用于时间轴）
  * @param {Date} start - 开始时间
  * @param {Date} end - 结束时间
- * @param {Date} dayStart - 一天的开始时间
+ * @param {Date} dayStart - 时间轴开始时间（8:00）
  * @returns {Object} 样式对象 { left, width }
  */
 export function getSlotStyle(start, end, dayStart) {
@@ -165,9 +170,10 @@ export function getSlotStyle(start, end, dayStart) {
   
   const startMinutes = (start - dayStart) / TIME_CONSTANTS.MILLISECONDS_PER_MINUTE
   const endMinutes = (end - dayStart) / TIME_CONSTANTS.MILLISECONDS_PER_MINUTE
+  const workingMinutes = TIME_CONSTANTS.WORKING_HOURS * TIME_CONSTANTS.MINUTES_PER_HOUR
   
-  const left = (startMinutes / TIME_CONSTANTS.MINUTES_PER_DAY) * 100
-  const width = ((endMinutes - startMinutes) / TIME_CONSTANTS.MINUTES_PER_DAY) * 100
+  const left = (startMinutes / workingMinutes) * 100
+  const width = ((endMinutes - startMinutes) / workingMinutes) * 100
   
   return {
     left: `${left}%`,

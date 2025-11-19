@@ -20,19 +20,21 @@
     </div>
 
     <div class="timeline-container">
-      <!-- 时间标签（每小时） -->
-      <div class="time-labels">
-        <div v-for="hour in 24" :key="hour" class="time-label">
-          {{ formatHour(hour - 1) }}
+      <!-- 桌面端：单排时间轴 -->
+      <div class="timeline-desktop">
+        <!-- 时间标签（每小时，从8点到24点） -->
+        <div class="time-labels">
+          <div v-for="hour in TIME_CONSTANTS.WORKING_HOURS" :key="hour" class="time-label">
+            {{ formatHour(TIME_CONSTANTS.START_HOUR + hour - 1) }}
+          </div>
         </div>
-      </div>
 
-      <div 
-        class="timeline-track"
-        @click="handleTimelineClick"
-        @mousemove="handleTimelineMove"
-        @mouseleave="clearPreview"
-      >
+        <div 
+          class="timeline-track"
+          @click="handleTimelineClick"
+          @mousemove="handleTimelineMove"
+          @mouseleave="clearPreview"
+        >
         <!-- 时间格子背景（48个半小时格子） -->
         <div class="time-cells">
           <div 
@@ -125,6 +127,122 @@
             <span class="selection-duration">
               {{ getSelectionDuration() }}
             </span>
+          </div>
+        </div>
+      </div>
+      </div>
+      
+      <!-- 移动端：均匀分两排 -->
+      <div class="timeline-mobile">
+        <!-- 第一排时间轴 (8:00-16:00) -->
+        <div class="timeline-period">
+          <div class="period-title">08:00 - 16:00</div>
+          <div class="time-labels-mobile">
+            <div v-for="hour in 8" :key="`row1-${hour}`" class="time-label-mobile">
+              {{ formatHour(8 + hour - 1) }}
+            </div>
+          </div>
+          <div 
+            class="timeline-track-mobile row1-track"
+            @click="(e) => handleTimelineClickMobile(e, 'row1')"
+            @touchstart="(e) => handleTouchStart(e, 'row1')"
+            @touchend="(e) => handleTouchEnd(e, 'row1')"
+          >
+            <!-- 时间格子 -->
+            <div class="time-cells">
+              <div 
+                v-for="cell in 16" 
+                :key="`row1-cell-${cell}`" 
+                class="time-cell"
+                :class="{ 
+                  'cell-hour': cell % 2 === 1,
+                  'cell-half': cell % 2 === 0
+                }"
+              ></div>
+            </div>
+            
+            <!-- 过去时间 -->
+            <div
+              v-if="pastTimeSlotRow1"
+              class="past-time-slot"
+              :style="getSlotStyleMobile(pastTimeSlotRow1.start, pastTimeSlotRow1.end, 'row1')"
+            ></div>
+            
+            <!-- 预约 -->
+            <div
+              v-for="booking in row1Bookings"
+              :key="`row1-${booking.id}`"
+              class="booked-slot-mobile"
+              :style="getSlotStyleMobile(booking.start, booking.end, 'row1')"
+            >
+              <span class="booking-text">{{ booking.user.username }}</span>
+            </div>
+            
+            <!-- 第一次点击标记（充能动画） -->
+            <div
+              v-if="firstClickInRow === 'row1' && firstClickPoint"
+              class="first-click-marker-mobile"
+              :style="getMarkerStyleMobile(firstClickPoint, 'row1')"
+            >
+              <div class="charging-circle"></div>
+              <div class="charging-pulse"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 第二排时间轴 (16:00-24:00) -->
+        <div class="timeline-period">
+          <div class="period-title">16:00 - 24:00</div>
+          <div class="time-labels-mobile">
+            <div v-for="hour in 8" :key="`row2-${hour}`" class="time-label-mobile">
+              {{ formatHour(16 + hour - 1) }}
+            </div>
+          </div>
+          <div 
+            class="timeline-track-mobile row2-track"
+            @click="(e) => handleTimelineClickMobile(e, 'row2')"
+            @touchstart="(e) => handleTouchStart(e, 'row2')"
+            @touchend="(e) => handleTouchEnd(e, 'row2')"
+          >
+            <!-- 时间格子 -->
+            <div class="time-cells">
+              <div 
+                v-for="cell in 16" 
+                :key="`row2-cell-${cell}`" 
+                class="time-cell"
+                :class="{ 
+                  'cell-hour': cell % 2 === 1,
+                  'cell-half': cell % 2 === 0
+                }"
+              ></div>
+            </div>
+            
+            <!-- 过去时间 -->
+            <div
+              v-if="pastTimeSlotRow2"
+              class="past-time-slot"
+              :style="getSlotStyleMobile(pastTimeSlotRow2.start, pastTimeSlotRow2.end, 'row2')"
+            ></div>
+            
+            <!-- 预约 -->
+            <div
+              v-for="booking in row2Bookings"
+              :key="`row2-${booking.id}`"
+              class="booked-slot-mobile"
+              :style="getSlotStyleMobile(booking.start, booking.end, 'row2')"
+            >
+              <span class="booking-text">{{ booking.user.username }}</span>
+            </div>
+            
+            <!-- 第一次点击标记（充能动画） -->
+            <div
+              v-if="firstClickInRow === 'row2' && firstClickPoint"
+              class="first-click-marker-mobile"
+              :style="getMarkerStyleMobile(firstClickPoint, 'row2')"
+            >
+              <div class="charging-circle"></div>
+              <div class="charging-pulse"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -238,10 +356,183 @@ const loadBookings = () => {
   clearSelection()
 }
 
+// 清除选择（包括移动端状态）
+const clearSelectionAll = () => {
+  clearSelection()
+  firstClickInRow.value = null
+}
+
 // 监听日期变化
 watch(() => props.room, () => {
-  clearSelection()
+  clearSelectionAll()
 }, { deep: true })
+
+// 移动端：两排预约数据
+const row1Bookings = computed(() => {
+  return bookedSlots.value.filter(booking => {
+    const hour = booking.start.getHours()
+    return hour >= 8 && hour < 16
+  })
+})
+
+const row2Bookings = computed(() => {
+  return bookedSlots.value.filter(booking => {
+    const hour = booking.start.getHours()
+    return hour >= 16
+  })
+})
+
+// 移动端：两排过去时间段
+const pastTimeSlotRow1 = computed(() => {
+  if (!pastTimeSlot.value) return null
+  const slot = pastTimeSlot.value
+  const row1Start = new Date(slot.start)
+  row1Start.setHours(8, 0, 0, 0)
+  const row1End = new Date(slot.start)
+  row1End.setHours(16, 0, 0, 0)
+  
+  if (slot.end <= row1Start) return null
+  if (slot.start >= row1End) return null
+  
+  return {
+    start: slot.start < row1Start ? row1Start : slot.start,
+    end: slot.end > row1End ? row1End : slot.end
+  }
+})
+
+const pastTimeSlotRow2 = computed(() => {
+  if (!pastTimeSlot.value) return null
+  const slot = pastTimeSlot.value
+  const row2Start = new Date(slot.start)
+  row2Start.setHours(16, 0, 0, 0)
+  const row2End = new Date(slot.start)
+  row2End.setHours(24, 0, 0, 0)
+  
+  if (slot.end <= row2Start) return null
+  if (slot.start >= row2End) return null
+  
+  return {
+    start: slot.start < row2Start ? row2Start : slot.start,
+    end: slot.end > row2End ? row2End : slot.end
+  }
+})
+
+// 记录第一次点击在哪一排
+const firstClickInRow = ref(null)
+
+// 移动端：计算时间段样式
+const getSlotStyleMobile = (start, end, row) => {
+  if (!start || !end) return {}
+  
+  const periodStart = new Date(selectedDate.value)
+  const periodMinutes = 8 * 60 // 每排8小时
+  
+  if (row === 'row1') {
+    periodStart.setHours(8, 0, 0, 0)
+  } else {
+    periodStart.setHours(16, 0, 0, 0)
+  }
+  
+  const startMinutes = Math.max(0, (start - periodStart) / (60 * 1000))
+  const endMinutes = Math.min(periodMinutes, (end - periodStart) / (60 * 1000))
+  
+  const left = (startMinutes / periodMinutes) * 100
+  const width = ((endMinutes - startMinutes) / periodMinutes) * 100
+  
+  return {
+    left: `${left}%`,
+    width: `${width}%`
+  }
+}
+
+// 移动端：计算标记点样式
+const getMarkerStyleMobile = (time, row) => {
+  if (!time) return {}
+  
+  const periodStart = new Date(selectedDate.value)
+  const periodMinutes = 8 * 60
+  
+  if (row === 'row1') {
+    periodStart.setHours(8, 0, 0, 0)
+  } else {
+    periodStart.setHours(16, 0, 0, 0)
+  }
+  
+  const minutes = (time - periodStart) / (60 * 1000)
+  const left = (minutes / periodMinutes) * 100
+  
+  return { left: `${left}%` }
+}
+
+// 移动端：处理点击事件
+const handleTimelineClickMobile = (event, row) => {
+  const rect = event.currentTarget.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const ratio = x / rect.width
+  
+  const periodStart = new Date(selectedDate.value)
+  
+  if (row === 'row1') {
+    periodStart.setHours(8, 0, 0, 0)
+  } else {
+    periodStart.setHours(16, 0, 0, 0)
+  }
+  
+  const minutes = Math.round(ratio * 8 * 60 / 30) * 30 // 8小时
+  const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
+  
+  // 如果是第一次点击
+  if (!firstClickPoint.value) {
+    firstClickPoint.value = clickTime
+    firstClickInRow.value = row
+  } else {
+    // 第二次点击
+    const start = firstClickPoint.value < clickTime ? firstClickPoint.value : clickTime
+    const end = firstClickPoint.value < clickTime ? clickTime : firstClickPoint.value
+    
+    selectionStart.value = start
+    selectionEnd.value = end
+    selectedSlot.value = true
+    firstClickInRow.value = null
+  }
+}
+
+// 触摸事件处理
+const handleTouchStart = (event, row) => {
+  event.preventDefault()
+}
+
+const handleTouchEnd = (event, row) => {
+  event.preventDefault()
+  const touch = event.changedTouches[0]
+  const rect = event.currentTarget.getBoundingClientRect()
+  const x = touch.clientX - rect.left
+  const ratio = x / rect.width
+  
+  const periodStart = new Date(selectedDate.value)
+  
+  if (row === 'row1') {
+    periodStart.setHours(8, 0, 0, 0)
+  } else {
+    periodStart.setHours(16, 0, 0, 0)
+  }
+  
+  const minutes = Math.round(ratio * 8 * 60 / 30) * 30
+  const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
+  
+  if (!firstClickPoint.value) {
+    firstClickPoint.value = clickTime
+    firstClickInRow.value = row
+  } else {
+    const start = firstClickPoint.value < clickTime ? firstClickPoint.value : clickTime
+    const end = firstClickPoint.value < clickTime ? clickTime : firstClickPoint.value
+    
+    selectionStart.value = start
+    selectionEnd.value = end
+    selectedSlot.value = true
+    firstClickInRow.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -312,6 +603,16 @@ watch(() => props.room, () => {
 .timeline-container {
   position: relative;
   margin-bottom: 24px;
+}
+
+/* 桌面端时间轴 */
+.timeline-desktop {
+  display: block;
+}
+
+/* 移动端时间轴 */
+.timeline-mobile {
+  display: none;
 }
 
 .time-labels {
@@ -695,8 +996,147 @@ watch(() => props.room, () => {
   border-radius: 8px;
 }
 
+/* 移动端时间轴样式 */
+.timeline-period {
+  margin-bottom: 16px;
+}
+
+.period-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.time-labels-mobile {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.time-label-mobile {
+  font-size: 11px;
+  color: #5f6368;
+  font-weight: 500;
+}
+
+.timeline-track-mobile {
+  position: relative;
+  height: 60px;
+  background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  border: 2px solid #e8eaed;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.booked-slot-mobile {
+  position: absolute;
+  top: 2px;
+  height: calc(100% - 4px);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.booking-text {
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+/* 移动端：第一次点击标记（充能动画） */
+.first-click-marker-mobile {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
+.charging-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  animation: charging-pulse 1.5s ease-out infinite;
+}
+
+.charging-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 3px solid #667eea;
+  border-radius: 50%;
+  animation: charging-expand 1.5s ease-out infinite;
+}
+
+@keyframes charging-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+}
+
+@keyframes charging-expand {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 1;
+    border-width: 3px;
+  }
+  50% {
+    width: 40px;
+    height: 40px;
+    opacity: 0.5;
+    border-width: 2px;
+  }
+  100% {
+    width: 50px;
+    height: 50px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
 /* 移动端样式优化 */
 @media (max-width: 768px) {
+  /* 隐藏桌面端时间轴 */
+  .timeline-desktop {
+    display: none;
+  }
+  
+  /* 显示移动端时间轴 */
+  .timeline-mobile {
+    display: block;
+  }
+  
   .room-info {
     margin-bottom: 16px;
     padding: 16px 12px;
