@@ -292,11 +292,14 @@ const submitBooking = async () => {
     
     await bookingAPI.createBooking(data)
     
-    ElMessage.success('预约成功！')
-    dialogVisible.value = false
-    
-    // 刷新预约列表
+    // 刷新预约列表（这会触发 TimelineSelector 更新）
     await loadRoomBookings()
+    
+    // 显示成功消息
+    ElMessage.success('预约成功！')
+    
+    // 关闭对话框
+    dialogVisible.value = false
     
   } catch (error) {
     if (error.response?.data?.detail) {

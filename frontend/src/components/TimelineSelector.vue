@@ -431,6 +431,14 @@ watch(() => props.room, () => {
   clearSelectionAll()
 }, { deep: true })
 
+// 监听预约列表变化（预约成功后刷新列表时清除选择）
+watch(() => props.bookings, (newBookings, oldBookings) => {
+  // 如果有选中的时间段，且预约列表长度增加了，说明预约成功，清除选择
+  if (selectedSlot.value && oldBookings && newBookings.length > oldBookings.length) {
+    clearSelectionAll()
+  }
+}, { deep: true })
+
 // 移动端：两排预约数据
 const row1Bookings = computed(() => {
   return bookedSlots.value.filter(booking => {
