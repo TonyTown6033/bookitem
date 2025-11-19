@@ -178,6 +178,37 @@
               <span class="booking-text">{{ booking.user.username }}</span>
             </div>
             
+            <!-- 移动端选中区域显示 -->
+            <div
+              v-if="mobileSelectionRow1"
+              class="mobile-selection-area"
+              :style="getSlotStyleMobile(mobileSelectionRow1.start, mobileSelectionRow1.end, 'row1')"
+            >
+              <div class="selection-time-info">
+                {{ formatTime(mobileSelectionRow1.start) }} - {{ formatTime(mobileSelectionRow1.end) }}
+              </div>
+            </div>
+            
+            <!-- 第一次点击：红色竖线标记 -->
+            <div
+              v-if="mobileFirstClickInRow1"
+              class="first-click-line-mobile"
+              :style="getMarkerStyleMobile(mobileFirstClickInRow1, 'row1')"
+            >
+              <div class="click-line"></div>
+              <div class="click-time-label">{{ formatTime(mobileFirstClickInRow1) }}</div>
+            </div>
+            
+            <!-- 第二次点击：红色竖线标记 -->
+            <div
+              v-if="mobileSecondClickInRow1"
+              class="second-click-line-mobile"
+              :style="getMarkerStyleMobile(mobileSecondClickInRow1, 'row1')"
+            >
+              <div class="click-line"></div>
+              <div class="click-time-label">{{ formatTime(mobileSecondClickInRow1) }}</div>
+            </div>
+            
             <!-- 第一次点击标记（充能动画） -->
             <div
               v-if="firstClickInRow === 'row1' && firstClickPoint"
@@ -232,6 +263,37 @@
               :style="getSlotStyleMobile(booking.start, booking.end, 'row2')"
             >
               <span class="booking-text">{{ booking.user.username }}</span>
+            </div>
+            
+            <!-- 移动端选中区域显示 -->
+            <div
+              v-if="mobileSelectionRow2"
+              class="mobile-selection-area"
+              :style="getSlotStyleMobile(mobileSelectionRow2.start, mobileSelectionRow2.end, 'row2')"
+            >
+              <div class="selection-time-info">
+                {{ formatTime(mobileSelectionRow2.start) }} - {{ formatTime(mobileSelectionRow2.end) }}
+              </div>
+            </div>
+            
+            <!-- 第一次点击：红色竖线标记 -->
+            <div
+              v-if="mobileFirstClickInRow2"
+              class="first-click-line-mobile"
+              :style="getMarkerStyleMobile(mobileFirstClickInRow2, 'row2')"
+            >
+              <div class="click-line"></div>
+              <div class="click-time-label">{{ formatTime(mobileFirstClickInRow2) }}</div>
+            </div>
+            
+            <!-- 第二次点击：红色竖线标记 -->
+            <div
+              v-if="mobileSecondClickInRow2"
+              class="second-click-line-mobile"
+              :style="getMarkerStyleMobile(mobileSecondClickInRow2, 'row2')"
+            >
+              <div class="click-line"></div>
+              <div class="click-time-label">{{ formatTime(mobileSecondClickInRow2) }}</div>
             </div>
             
             <!-- 第一次点击标记（充能动画） -->
@@ -360,6 +422,8 @@ const loadBookings = () => {
 const clearSelectionAll = () => {
   clearSelection()
   firstClickInRow.value = null
+  mobileFirstClick.value = null
+  mobileSecondClick.value = null
 }
 
 // 监听日期变化
@@ -419,6 +483,86 @@ const pastTimeSlotRow2 = computed(() => {
 
 // 记录第一次点击在哪一排
 const firstClickInRow = ref(null)
+
+// 移动端：显示红色竖线的时间点
+const mobileFirstClick = ref(null)
+const mobileSecondClick = ref(null)
+
+// 移动端：第一排的点击标记
+const mobileFirstClickInRow1 = computed(() => {
+  if (!mobileFirstClick.value) return null
+  const hour = mobileFirstClick.value.getHours()
+  return (hour >= 8 && hour < 16) ? mobileFirstClick.value : null
+})
+
+const mobileSecondClickInRow1 = computed(() => {
+  if (!mobileSecondClick.value) return null
+  const hour = mobileSecondClick.value.getHours()
+  return (hour >= 8 && hour < 16) ? mobileSecondClick.value : null
+})
+
+// 移动端：第二排的点击标记
+const mobileFirstClickInRow2 = computed(() => {
+  if (!mobileFirstClick.value) return null
+  const hour = mobileFirstClick.value.getHours()
+  return (hour >= 16) ? mobileFirstClick.value : null
+})
+
+const mobileSecondClickInRow2 = computed(() => {
+  if (!mobileSecondClick.value) return null
+  const hour = mobileSecondClick.value.getHours()
+  return (hour >= 16) ? mobileSecondClick.value : null
+})
+
+// 移动端：选中区域（第一排）
+const mobileSelectionRow1 = computed(() => {
+  if (!mobileFirstClick.value || !mobileSecondClick.value) return null
+  
+  const start = mobileFirstClick.value < mobileSecondClick.value ? mobileFirstClick.value : mobileSecondClick.value
+  const end = mobileFirstClick.value < mobileSecondClick.value ? mobileSecondClick.value : mobileFirstClick.value
+  
+  const startHour = start.getHours()
+  const endHour = end.getHours()
+  
+  // 只有当区间在第一排范围内时才显示
+  if (startHour >= 8 && endHour <= 16) {
+    return { start, end }
+  }
+  
+  // 跨排的情况，只显示第一排部分
+  if (startHour < 16 && endHour > 16) {
+    const row1End = new Date(start)
+    row1End.setHours(16, 0, 0, 0)
+    return { start, end: row1End }
+  }
+  
+  return null
+})
+
+// 移动端：选中区域（第二排）
+const mobileSelectionRow2 = computed(() => {
+  if (!mobileFirstClick.value || !mobileSecondClick.value) return null
+  
+  const start = mobileFirstClick.value < mobileSecondClick.value ? mobileFirstClick.value : mobileSecondClick.value
+  const end = mobileFirstClick.value < mobileSecondClick.value ? mobileSecondClick.value : mobileFirstClick.value
+  
+  const startHour = start.getHours()
+  const endHour = end.getHours()
+  
+  // 只有当区间在第二排范围内时才显示
+  if (startHour >= 16 && endHour <= 24) {
+    return { start, end }
+  }
+  
+  // 跨排的情况，只显示第二排部分
+  if (startHour < 16 && endHour > 16) {
+    const row2Start = new Date(end)
+    row2Start.setHours(16, 0, 0, 0)
+    return { start: row2Start, end }
+  }
+  
+  return null
+})
 
 // 移动端：计算时间段样式
 const getSlotStyleMobile = (start, end, row) => {
@@ -481,12 +625,29 @@ const handleTimelineClickMobile = (event, row) => {
   const minutes = Math.round(ratio * 8 * 60 / 30) * 30 // 8小时
   const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
   
-  // 如果是第一次点击
-  if (!firstClickPoint.value) {
+  // 如果已经有选中的区间，清除并开始新的选择
+  if (selectedSlot.value) {
+    // 清除旧的选择
+    selectedSlot.value = null
+    selectionStart.value = null
+    selectionEnd.value = null
+    mobileFirstClick.value = null
+    mobileSecondClick.value = null
+    
+    // 开始新的第一次点击
     firstClickPoint.value = clickTime
     firstClickInRow.value = row
-  } else {
-    // 第二次点击
+    mobileFirstClick.value = clickTime
+  }
+  // 如果是第一次点击
+  else if (!firstClickPoint.value) {
+    firstClickPoint.value = clickTime
+    firstClickInRow.value = row
+    mobileFirstClick.value = clickTime
+    mobileSecondClick.value = null
+  } 
+  // 第二次点击
+  else {
     const start = firstClickPoint.value < clickTime ? firstClickPoint.value : clickTime
     const end = firstClickPoint.value < clickTime ? clickTime : firstClickPoint.value
     
@@ -494,6 +655,8 @@ const handleTimelineClickMobile = (event, row) => {
     selectionEnd.value = end
     selectedSlot.value = true
     firstClickInRow.value = null
+    
+    mobileSecondClick.value = clickTime
   }
 }
 
@@ -520,10 +683,29 @@ const handleTouchEnd = (event, row) => {
   const minutes = Math.round(ratio * 8 * 60 / 30) * 30
   const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
   
-  if (!firstClickPoint.value) {
+  // 如果已经有选中的区间，清除并开始新的选择
+  if (selectedSlot.value) {
+    // 清除旧的选择
+    selectedSlot.value = null
+    selectionStart.value = null
+    selectionEnd.value = null
+    mobileFirstClick.value = null
+    mobileSecondClick.value = null
+    
+    // 开始新的第一次点击
     firstClickPoint.value = clickTime
     firstClickInRow.value = row
-  } else {
+    mobileFirstClick.value = clickTime
+  }
+  // 如果是第一次点击
+  else if (!firstClickPoint.value) {
+    firstClickPoint.value = clickTime
+    firstClickInRow.value = row
+    mobileFirstClick.value = clickTime
+    mobileSecondClick.value = null
+  } 
+  // 第二次点击
+  else {
     const start = firstClickPoint.value < clickTime ? firstClickPoint.value : clickTime
     const end = firstClickPoint.value < clickTime ? clickTime : firstClickPoint.value
     
@@ -531,6 +713,8 @@ const handleTouchEnd = (event, row) => {
     selectionEnd.value = end
     selectedSlot.value = true
     firstClickInRow.value = null
+    
+    mobileSecondClick.value = clickTime
   }
 }
 </script>
@@ -1054,6 +1238,180 @@ const handleTouchEnd = (event, row) => {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0 4px;
+}
+
+/* 移动端：选中区域 */
+.mobile-selection-area {
+  position: absolute;
+  top: 2px;
+  height: calc(100% - 4px);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border: 2px solid rgba(102, 126, 234, 0.5);
+  border-radius: 6px;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: selection-appear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.selection-time-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  letter-spacing: 0.5px;
+  animation: info-bounce 0.5s ease-out;
+}
+
+@keyframes selection-appear {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.3) scaleY(0.8);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes info-bounce {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 移动端：第一次点击紫色竖线 */
+.first-click-line-mobile {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 9;
+  pointer-events: none;
+  animation: first-line-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 移动端：第二次点击紫色竖线 */
+.second-click-line-mobile {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 9;
+  pointer-events: none;
+  animation: second-line-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes first-line-appear {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0);
+  }
+  60% {
+    transform: translateX(-50%) scaleY(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes second-line-appear {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0);
+  }
+  60% {
+    transform: translateX(-50%) scaleY(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+.click-line {
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(to bottom, 
+    rgba(102, 126, 234, 0.3) 0%,
+    rgba(102, 126, 234, 1) 20%,
+    rgba(102, 126, 234, 1) 80%,
+    rgba(102, 126, 234, 0.3) 100%
+  );
+  box-shadow: 0 0 8px rgba(102, 126, 234, 0.6),
+              0 0 16px rgba(102, 126, 234, 0.4);
+  animation: line-glow 2s ease-in-out infinite;
+}
+
+.click-time-label {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  animation: label-bounce 0.5s ease-out;
+}
+
+.click-time-label::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #764ba2;
+}
+
+@keyframes line-glow {
+  0%, 100% {
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.3);
+  }
+}
+
+@keyframes label-bounce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.8);
+  }
+  60% {
+    transform: translateX(-50%) translateY(2px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 /* 移动端：第一次点击标记（充能动画） */
