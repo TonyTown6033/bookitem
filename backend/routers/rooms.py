@@ -1,11 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import timezone
 from database import get_db
 from models import Room
 from schemas import RoomCreate, RoomResponse
 
 router = APIRouter()
+
+def add_timezone_to_rooms(rooms):
+    """为会议室数据添加 UTC 时区信息"""
+    for room in rooms:
+        if room.created_at and room.created_at.tzinfo is None:
+            room.created_at = room.created_at.replace(tzinfo=timezone.utc)
+    return rooms
 
 @router.post("/", response_model=RoomResponse)
 def create_room(room: RoomCreate, db: Session = Depends(get_db)):
@@ -29,14 +37,14 @@ def create_room(room: RoomCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=List[RoomResponse])
 def get_rooms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rooms = db.query(Room).offset(skip).limit(limit).all()
-    return rooms
+    return add_timezone_to_rooms(rooms)
 
 @router.get("/{room_id}", response_model=RoomResponse)
 def get_room(room_id: int, db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="会议室不存在")
-    return room
+    return add_timezone_to_rooms([room])[0]
 
 @router.put("/{room_id}", response_model=RoomResponse)
 def update_room(room_id: int, room: RoomCreate, db: Session = Depends(get_db)):

@@ -16,6 +16,7 @@
     </div>
 
     <div class="timeline-container">
+      <!-- 时间标签（每小时） -->
       <div class="time-labels">
         <div v-for="hour in 24" :key="hour" class="time-label">
           {{ formatHour(hour - 1) }}
@@ -29,17 +30,35 @@
         @mouseup="endSelection"
         @mouseleave="cancelSelection"
       >
-        <!-- 过去的时间段（灰色，不可用） -->
+        <!-- 时间格子背景（48个半小时格子） -->
+        <div class="time-cells">
+          <div 
+            v-for="cell in 48" 
+            :key="cell" 
+            class="time-cell"
+            :class="{ 
+              'cell-hour': cell % 2 === 1,
+              'cell-half': cell % 2 === 0
+            }"
+          >
+            <span class="cell-time">{{ getCellTime(cell) }}</span>
+          </div>
+        </div>
+
+        <!-- 过去的时间段（优雅灰色） -->
         <div
           v-if="pastTimeSlot"
           class="past-time-slot"
           :style="getSlotStyle(pastTimeSlot.start, pastTimeSlot.end)"
           title="过去的时间不可预约"
         >
-          <span class="past-time-info">已过期</span>
+          <div class="slot-overlay">
+            <el-icon class="slot-icon"><Clock /></el-icon>
+            <span class="slot-text">已过期</span>
+          </div>
         </div>
 
-        <!-- 已预约的时间段（深灰色） -->
+        <!-- 已预约的时间段（深色优雅渐变） -->
         <div
           v-for="booking in bookedSlots"
           :key="booking.id"
@@ -47,27 +66,36 @@
           :style="getSlotStyle(booking.start, booking.end)"
           :title="`${booking.user.username} - ${booking.purpose || '会议'}`"
         >
-          <span class="booking-info">
-            {{ booking.user.username }}<br>
-            {{ formatTime(booking.start) }} - {{ formatTime(booking.end) }}
-          </span>
+          <div class="booking-content">
+            <div class="booking-header">
+              <el-icon><UserFilled /></el-icon>
+              <span class="booking-user">{{ booking.user.username }}</span>
+            </div>
+            <div class="booking-time">
+              {{ formatTime(booking.start) }} - {{ formatTime(booking.end) }}
+            </div>
+            <div class="booking-purpose" v-if="booking.purpose">
+              {{ booking.purpose }}
+            </div>
+          </div>
         </div>
 
-        <!-- 当前选择的区间（蓝色半透明） -->
+        <!-- 当前选择的区间（优雅蓝色） -->
         <div
           v-if="selecting || selectedSlot"
           class="selected-slot"
           :class="{ invalid: !isValidSelection }"
           :style="getSlotStyle(selectionStart, selectionEnd)"
         >
-          <span class="selection-time">
-            {{ formatTime(selectionStart) }} - {{ formatTime(selectionEnd) }}
-          </span>
-        </div>
-
-        <!-- 时间刻度线 -->
-        <div class="time-grid">
-          <div v-for="hour in 24" :key="hour" class="grid-line"></div>
+          <div class="selection-content">
+            <el-icon class="selection-icon"><Calendar /></el-icon>
+            <span class="selection-time">
+              {{ formatTime(selectionStart) }} - {{ formatTime(selectionEnd) }}
+            </span>
+            <span class="selection-duration">
+              {{ getSelectionDuration() }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -95,6 +123,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Clock, UserFilled, Calendar } from '@element-plus/icons-vue'
 
 const props = defineProps({
   room: {
@@ -320,6 +349,29 @@ const formatTime = (date) => {
   })
 }
 
+// 获取格子显示的时间
+const getCellTime = (cellIndex) => {
+  const totalMinutes = (cellIndex - 1) * 30
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+}
+
+// 获取选择的时长
+const getSelectionDuration = () => {
+  if (!selectionStart.value || !selectionEnd.value) return ''
+  const minutes = (selectionEnd.value - selectionStart.value) / (1000 * 60)
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours > 0 && mins > 0) {
+    return `${hours}小时${mins}分钟`
+  } else if (hours > 0) {
+    return `${hours}小时`
+  } else {
+    return `${mins}分钟`
+  }
+}
+
 // 加载预约数据
 const loadBookings = () => {
   emit('refresh')
@@ -334,27 +386,33 @@ watch(() => props.room, () => {
 
 <style scoped>
 .timeline-selector {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(to bottom, #ffffff, #fafbfc);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .room-info {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #e4e7ed;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e8eaed;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 20px;
+  border-radius: 12px;
 }
 
 .room-info h3 {
-  margin: 0 0 8px 0;
-  color: #303133;
-  font-size: 20px;
+  margin: 0 0 10px 0;
+  color: #1a1a1a;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .room-info p {
   margin: 0;
-  color: #909399;
-  font-size: 14px;
+  color: #5f6368;
+  font-size: 15px;
 }
 
 .date-selector {
@@ -363,33 +421,37 @@ watch(() => props.room, () => {
 
 .timeline-container {
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .time-labels {
   display: flex;
-  margin-bottom: 8px;
-  padding-left: 2px;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
 .time-label {
   flex: 1;
-  font-size: 12px;
-  color: #909399;
+  font-size: 13px;
+  color: #5f6368;
   text-align: left;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .timeline-track {
   position: relative;
-  height: 80px;
-  background: white;
-  border: 2px solid #dcdfe6;
-  border-radius: 4px;
+  height: 120px;
+  background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  border: 2px solid #e8eaed;
+  border-radius: 12px;
   cursor: crosshair;
   user-select: none;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.time-grid {
+.time-cells {
   position: absolute;
   top: 0;
   left: 0;
@@ -397,115 +459,234 @@ watch(() => props.room, () => {
   bottom: 0;
   display: flex;
   pointer-events: none;
+  z-index: 0;
 }
 
-.grid-line {
+.time-cell {
   flex: 1;
-  border-right: 1px solid #f0f0f0;
+  border-right: 1px solid #f0f2f4;
+  position: relative;
+  transition: background-color 0.2s ease;
 }
 
-.grid-line:last-child {
+.time-cell:hover {
+  background-color: rgba(64, 158, 255, 0.03);
+}
+
+.time-cell.cell-hour {
+  border-right: 2px solid #e0e3e6;
+}
+
+.time-cell:last-child {
   border-right: none;
+}
+
+.cell-time {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #c0c4c8;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.time-cell:hover .cell-time {
+  opacity: 1;
 }
 
 .past-time-slot {
   position: absolute;
   top: 0;
   height: 100%;
-  background: repeating-linear-gradient(
-    45deg,
-    #f5f5f5,
-    #f5f5f5 10px,
-    #e8e8e8 10px,
-    #e8e8e8 20px
+  background: linear-gradient(
+    135deg,
+    rgba(220, 220, 220, 0.3) 0%,
+    rgba(200, 200, 200, 0.4) 100%
   );
-  border-right: 2px solid #d0d0d0;
+  backdrop-filter: blur(2px);
+  border-right: 3px solid rgba(160, 160, 160, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   z-index: 1;
-  opacity: 0.8;
 }
 
-.past-time-info {
-  font-size: 12px;
+.slot-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.slot-icon {
+  font-size: 24px;
   color: #909399;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.slot-text {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .booked-slot {
   position: absolute;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(135deg, #d0d0d0 0%, #a0a0a0 100%);
-  border-left: 2px solid #606266;
-  border-right: 2px solid #606266;
+  top: 4px;
+  height: calc(100% - 8px);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-left: 3px solid #5a67d8;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   z-index: 2;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
 }
 
-.booking-info {
-  font-size: 11px;
-  color: #303133;
-  text-align: center;
-  line-height: 1.4;
-  padding: 0 4px;
+.booked-slot:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+.booking-content {
+  padding: 8px 12px;
+  color: white;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.booking-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.booking-user {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-time {
+  font-size: 11px;
+  opacity: 0.9;
   font-weight: 500;
+}
+
+.booking-purpose {
+  font-size: 10px;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
 }
 
 .selected-slot {
   position: absolute;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(64, 158, 255, 0.3) 0%, rgba(64, 158, 255, 0.5) 100%);
-  border: 2px solid #409EFF;
+  top: 4px;
+  height: calc(100% - 8px);
+  background: linear-gradient(135deg, rgba(66, 153, 225, 0.25) 0%, rgba(72, 187, 120, 0.25) 100%);
+  border: 3px solid #4299e1;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  animation: pulse 1s ease-in-out infinite;
+  z-index: 3;
+  animation: selectionGlow 2s ease-in-out infinite;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 4px 16px rgba(66, 153, 225, 0.3);
 }
 
 .selected-slot.invalid {
-  background: linear-gradient(135deg, rgba(245, 108, 108, 0.3) 0%, rgba(245, 108, 108, 0.5) 100%);
-  border-color: #F56C6C;
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.25) 0%, rgba(229, 62, 62, 0.25) 100%);
+  border-color: #f56565;
+  box-shadow: 0 4px 16px rgba(245, 101, 101, 0.3);
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+@keyframes selectionGlow {
+  0%, 100% { 
+    opacity: 1;
+    box-shadow: 0 4px 16px rgba(66, 153, 225, 0.3);
+  }
+  50% { 
+    opacity: 0.9;
+    box-shadow: 0 6px 20px rgba(66, 153, 225, 0.5);
+  }
+}
+
+.selection-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.selection-icon {
+  font-size: 20px;
+  color: #4299e1;
+}
+
+.selected-slot.invalid .selection-icon {
+  color: #f56565;
 }
 
 .selection-time {
-  font-size: 12px;
-  font-weight: bold;
-  color: #409EFF;
-  background: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c5282;
+  letter-spacing: 0.3px;
 }
 
 .selected-slot.invalid .selection-time {
-  color: #F56C6C;
+  color: #c53030;
+}
+
+.selection-duration {
+  font-size: 11px;
+  color: #718096;
+  font-weight: 500;
 }
 
 .selection-info {
-  margin-top: 20px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
 }
 
 .action-buttons {
-  margin-top: 15px;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
+}
+
+.action-buttons .el-button {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 12px 24px;
+  border-radius: 8px;
 }
 </style>
 

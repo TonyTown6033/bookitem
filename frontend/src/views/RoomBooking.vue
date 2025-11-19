@@ -289,12 +289,29 @@ onMounted(() => {
 
 <style scoped>
 .room-booking-page {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
+  padding: 32px;
+  background: linear-gradient(to bottom, #f7f9fc 0%, #ffffff 100%);
+  min-height: 100vh;
 }
 
 .header-card {
-  margin-bottom: 20px;
+  margin-bottom: 32px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header-card :deep(.el-card__header) {
+  background: transparent;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 28px 32px;
+}
+
+.header-card :deep(.el-card__body) {
+  padding: 24px 32px;
 }
 
 .card-header {
@@ -303,82 +320,260 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-header h2 {
+  color: white;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .intro {
-  color: #606266;
+  color: rgba(255, 255, 255, 0.95);
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
+  letter-spacing: 0.5px;
 }
 
 .rooms-row {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .room-card {
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 3px solid #e8eaed;
+  background: linear-gradient(to bottom, #ffffff, #f9fafb);
 }
 
 .room-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+  border-color: #b8c5f0;
 }
 
 .room-card.selected {
-  border: 2px solid #409EFF;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  border-color: #667eea;
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.35);
+  background: linear-gradient(135deg, #f0f3ff 0%, #ffffff 100%);
+}
+
+.room-card.selected .room-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin: -1px -1px 15px -1px;
+}
+
+.room-card.selected .room-header h3 {
+  color: white;
+}
+
+.room-card.selected .room-header .el-icon {
+  color: white;
 }
 
 .room-header {
   text-align: center;
   margin-bottom: 15px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 2px solid #e8eaed;
+  transition: all 0.3s ease;
+}
+
+.room-header .el-icon {
+  font-size: 42px;
+  color: #667eea;
 }
 
 .room-header h3 {
-  margin: 10px 0 0 0;
-  color: #303133;
-  font-size: 18px;
+  margin: 12px 0 0 0;
+  color: #1a1a1a;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .room-details {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+  padding: 0 16px;
 }
 
 .room-details p {
-  margin: 8px 0;
-  color: #606266;
-  font-size: 14px;
+  margin: 10px 0;
+  color: #4a5568;
+  font-size: 15px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.room-details .el-icon {
+  color: #667eea;
+  font-size: 18px;
 }
 
 .room-details .description {
-  color: #909399;
-  font-size: 13px;
-  line-height: 1.5;
+  color: #718096;
+  font-size: 14px;
+  line-height: 1.6;
   display: block;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #f0f2f4;
+  font-weight: 400;
 }
 
 .room-footer {
   display: flex;
   justify-content: center;
+  padding: 0 16px 12px 16px;
+}
+
+.room-footer .el-button {
+  border-radius: 10px;
+  padding: 10px 28px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.room-card.selected .room-footer .el-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.room-card.selected .room-footer .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
 }
 
 .timeline-card {
-  margin-top: 20px;
+  margin-top: 28px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid #e8eaed;
+}
+
+.timeline-card :deep(.el-card__header) {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  font-weight: 600;
+  font-size: 18px;
+  padding: 20px 28px;
+  letter-spacing: 0.5px;
+  color: #2d3748;
 }
 
 .capacity-hint {
-  margin-left: 10px;
-  color: #909399;
-  font-size: 14px;
+  margin-left: 12px;
+  color: #718096;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* 优化弹窗样式 */
+:deep(.el-dialog) {
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px 32px;
+  border-radius: 16px 16px 0 0;
+}
+
+:deep(.el-dialog__title) {
+  color: white;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+:deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: white;
+  font-size: 24px;
+}
+
+:deep(.el-dialog__body) {
+  padding: 32px;
+  background: linear-gradient(to bottom, #fafbfc, #ffffff);
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 2px solid #e8eaed;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: #b8c5f0;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+:deep(.el-textarea__inner) {
+  border-radius: 10px;
+  border: 2px solid #e8eaed;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-textarea__inner:hover) {
+  border-color: #b8c5f0;
+}
+
+:deep(.el-textarea__inner:focus) {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+:deep(.el-select) {
+  width: 100%;
+}
+
+:deep(.el-button) {
+  border-radius: 10px;
+  padding: 12px 32px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-button--primary) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+:deep(.el-button--primary:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+:deep(.el-alert) {
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
 }
 </style>
 
