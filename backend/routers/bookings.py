@@ -2,12 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from database import get_db
 from models import Booking, User, Room
 from schemas import BookingCreate, BookingResponse, BookingDetailResponse
 
 router = APIRouter()
+
+def make_aware(dt):
+    """将 naive datetime 转换为 aware datetime (UTC)"""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+def get_current_time():
+    """获取当前时间（UTC，带时区信息）"""
+    return datetime.now(timezone.utc)
 
 def check_time_conflict(db: Session, room_id: int, start_time: datetime, end_time: datetime, booking_id: int = None):
     """检查时间冲突"""
@@ -41,23 +51,27 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
     if not room.is_available:
         raise HTTPException(status_code=400, detail="会议室不可用")
     
+    # 处理时区问题
+    start_time = make_aware(booking.start_time) if booking.start_time.tzinfo is None else booking.start_time
+    end_time = make_aware(booking.end_time) if booking.end_time.tzinfo is None else booking.end_time
+    
     # 验证时间
-    if booking.start_time >= booking.end_time:
+    if start_time >= end_time:
         raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
     
-    if booking.start_time < datetime.now():
+    if start_time < get_current_time():
         raise HTTPException(status_code=400, detail="不能预约过去的时间")
     
     # 检查时间冲突
-    if check_time_conflict(db, booking.room_id, booking.start_time, booking.end_time):
+    if check_time_conflict(db, booking.room_id, start_time, end_time):
         raise HTTPException(status_code=400, detail="该时间段已被预约")
     
-    # 创建预约
+    # 创建预约（转换为 naive datetime 存储）
     db_booking = Booking(
         user_id=booking.user_id,
         room_id=booking.room_id,
-        start_time=booking.start_time,
-        end_time=booking.end_time,
+        start_time=start_time.replace(tzinfo=None),
+        end_time=end_time.replace(tzinfo=None),
         purpose=booking.purpose,
         status="confirmed"
     )

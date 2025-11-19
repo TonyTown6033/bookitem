@@ -29,7 +29,17 @@
         @mouseup="endSelection"
         @mouseleave="cancelSelection"
       >
-        <!-- 已预约的时间段（灰色） -->
+        <!-- 过去的时间段（灰色，不可用） -->
+        <div
+          v-if="pastTimeSlot"
+          class="past-time-slot"
+          :style="getSlotStyle(pastTimeSlot.start, pastTimeSlot.end)"
+          title="过去的时间不可预约"
+        >
+          <span class="past-time-info">已过期</span>
+        </div>
+
+        <!-- 已预约的时间段（深灰色） -->
         <div
           v-for="booking in bookedSlots"
           :key="booking.id"
@@ -106,6 +116,36 @@ const selectionStart = ref(null)
 const selectionEnd = ref(null)
 const mouseDownTime = ref(null)
 
+// 计算过去的时间段
+const pastTimeSlot = computed(() => {
+  if (!selectedDate.value) return null
+  
+  const now = new Date()
+  const dateStart = new Date(selectedDate.value)
+  dateStart.setHours(0, 0, 0, 0)
+  
+  const dateEnd = new Date(selectedDate.value)
+  dateEnd.setHours(23, 59, 59, 999)
+  
+  // 如果选择的是今天，显示当前时间之前的部分
+  if (dateStart.toDateString() === now.toDateString()) {
+    return {
+      start: dateStart,
+      end: now
+    }
+  }
+  
+  // 如果选择的是过去的日期，整天都是灰色
+  if (dateStart < now) {
+    return {
+      start: dateStart,
+      end: dateEnd
+    }
+  }
+  
+  return null
+})
+
 // 过滤当前日期的预约
 const bookedSlots = computed(() => {
   if (!selectedDate.value) return []
@@ -122,10 +162,28 @@ const bookedSlots = computed(() => {
   }))
 })
 
-// 检查选择是否有效（不与已有预约冲突）
+// 检查选择是否有效（不与已有预约冲突，不在过去）
 const isValidSelection = computed(() => {
   if (!selectionStart.value || !selectionEnd.value) return false
   if (selectionStart.value >= selectionEnd.value) return false
+  
+  // 检查是否在过去的时间
+  const now = new Date()
+  if (selectionStart.value < now) return false
+  
+  // 检查是否与过去的时间段重叠
+  if (pastTimeSlot.value) {
+    const pastStart = pastTimeSlot.value.start
+    const pastEnd = pastTimeSlot.value.end
+    
+    if (
+      (selectionStart.value >= pastStart && selectionStart.value < pastEnd) ||
+      (selectionEnd.value > pastStart && selectionEnd.value <= pastEnd) ||
+      (selectionStart.value <= pastStart && selectionEnd.value >= pastEnd)
+    ) {
+      return false
+    }
+  }
   
   // 检查是否与已有预约冲突
   return !bookedSlots.value.some(booking => {
@@ -178,10 +236,10 @@ const endSelection = () => {
   
   selecting.value = false
   
-  // 最小选择15分钟
+  // 最小选择30分钟（半小时）
   const duration = (selectionEnd.value - selectionStart.value) / (1000 * 60)
-  if (duration < 15) {
-    ElMessage.warning('预约时长至少15分钟')
+  if (duration < 30) {
+    ElMessage.warning('预约时长至少30分钟（半小时）')
     clearSelection()
     return
   }
@@ -222,7 +280,7 @@ const confirmBooking = () => {
 const getTimeFromPosition = (x, width) => {
   const ratio = Math.max(0, Math.min(1, x / width))
   const date = new Date(selectedDate.value)
-  const minutes = Math.round(ratio * 24 * 60 / 15) * 15 // 15分钟为单位
+  const minutes = Math.round(ratio * 24 * 60 / 30) * 30 // 30分钟为单位（半小时）
   date.setHours(0, 0, 0, 0)
   date.setMinutes(minutes)
   return date
@@ -350,28 +408,56 @@ watch(() => props.room, () => {
   border-right: none;
 }
 
-.booked-slot {
+.past-time-slot {
   position: absolute;
   top: 0;
   height: 100%;
-  background: linear-gradient(135deg, #e0e0e0 0%, #c0c0c0 100%);
-  border-left: 2px solid #909399;
-  border-right: 2px solid #909399;
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5,
+    #f5f5f5 10px,
+    #e8e8e8 10px,
+    #e8e8e8 20px
+  );
+  border-right: 2px solid #d0d0d0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   z-index: 1;
+  opacity: 0.8;
+}
+
+.past-time-info {
+  font-size: 12px;
+  color: #909399;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.booked-slot {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(135deg, #d0d0d0 0%, #a0a0a0 100%);
+  border-left: 2px solid #606266;
+  border-right: 2px solid #606266;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
 }
 
 .booking-info {
   font-size: 11px;
-  color: #606266;
+  color: #303133;
   text-align: center;
   line-height: 1.4;
   padding: 0 4px;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
 
 .selected-slot {
