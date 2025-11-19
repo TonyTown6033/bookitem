@@ -14,47 +14,62 @@
     </el-card>
 
     <!-- 会议室列表 -->
-    <el-row :gutter="20" class="rooms-row">
-      <el-col 
-        v-for="room in availableRooms" 
-        :key="room.id" 
-        :xs="24" 
-        :sm="12" 
-        :md="8" 
-        :lg="6"
-      >
-        <el-card 
-          class="room-card" 
-          :class="{ selected: selectedRoom?.id === room.id }"
-          shadow="hover"
-          @click="selectRoom(room)"
-        >
-          <div class="room-header">
-            <el-icon size="32" color="#409EFF"><OfficeBuilding /></el-icon>
-            <h3>{{ room.name }}</h3>
+    <div class="rooms-grid">
+      <template v-for="room in availableRooms" :key="room.id">
+        <!-- 会议室卡片 -->
+        <div class="room-item">
+          <el-card 
+            class="room-card" 
+            :class="{ selected: selectedRoom?.id === room.id }"
+            shadow="hover"
+            @click="selectRoom(room)"
+          >
+            <div class="room-header">
+              <el-icon size="32" color="#409EFF"><OfficeBuilding /></el-icon>
+              <h3>{{ room.name }}</h3>
+            </div>
+            <div class="room-details">
+              <p><el-icon><Location /></el-icon> {{ room.location }}</p>
+              <p><el-icon><User /></el-icon> {{ room.capacity }} 人</p>
+              <p class="description">{{ room.description }}</p>
+            </div>
+            <div class="room-footer">
+              <el-tag v-if="room.is_available" type="success" size="small">可用</el-tag>
+              <el-tag v-else type="danger" size="small">不可用</el-tag>
+            </div>
+          </el-card>
+        </div>
+        
+        <!-- 时间轴选择器（展开在当前会议室下方） -->
+        <transition name="timeline-expand">
+          <div 
+            v-if="selectedRoom?.id === room.id" 
+            class="timeline-wrapper"
+          >
+            <el-card class="timeline-card">
+              <template #header>
+                <div class="timeline-header">
+                  <span>选择预约时间</span>
+                  <el-button 
+                    text 
+                    @click.stop="closeTimeline"
+                    :icon="Close"
+                  >
+                    关闭
+                  </el-button>
+                </div>
+              </template>
+              <TimelineSelector
+                :room="selectedRoom"
+                :bookings="roomBookings"
+                @create-booking="showBookingDialog"
+                @refresh="loadRoomBookings"
+              />
+            </el-card>
           </div>
-          <div class="room-details">
-            <p><el-icon><Location /></el-icon> {{ room.location }}</p>
-            <p><el-icon><User /></el-icon> {{ room.capacity }} 人</p>
-            <p class="description">{{ room.description }}</p>
-          </div>
-          <div class="room-footer">
-            <el-tag v-if="room.is_available" type="success" size="small">可用</el-tag>
-            <el-tag v-else type="danger" size="small">不可用</el-tag>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 时间轴选择器 -->
-    <el-card v-if="selectedRoom" class="timeline-card">
-      <TimelineSelector
-        :room="selectedRoom"
-        :bookings="roomBookings"
-        @create-booking="showBookingDialog"
-        @refresh="loadRoomBookings"
-      />
-    </el-card>
+        </transition>
+      </template>
+    </div>
 
     <!-- 创建预约对话框 -->
     <el-dialog 
@@ -136,7 +151,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { OfficeBuilding, Location, User, List } from '@element-plus/icons-vue'
+import { OfficeBuilding, Location, User, List, Close } from '@element-plus/icons-vue'
 import TimelineSelector from '@/components/TimelineSelector.vue'
 import { roomAPI, bookingAPI, userAPI } from '@/api'
 
@@ -193,8 +208,18 @@ const selectRoom = async (room) => {
     return
   }
   
+  // 如果点击的是同一个会议室，则关闭时间轴
+  if (selectedRoom.value?.id === room.id) {
+    selectedRoom.value = null
+    return
+  }
+  
   selectedRoom.value = room
   await loadRoomBookings()
+}
+
+const closeTimeline = () => {
+  selectedRoom.value = null
 }
 
 const loadRoomBookings = async () => {
@@ -335,15 +360,21 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
-.rooms-row {
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
   margin-bottom: 28px;
+}
+
+.room-item {
+  /* 会议室卡片容器 */
 }
 
 .room-card {
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
-  margin-bottom: 24px;
   border-radius: 16px;
   overflow: hidden;
   border: 3px solid #e8eaed;
@@ -456,21 +487,79 @@ onMounted(() => {
   box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
 }
 
+/* 时间轴包装器 - 占据整行 */
+.timeline-wrapper {
+  grid-column: 1 / -1;
+  margin: -12px 0 12px 0;
+}
+
 .timeline-card {
-  margin-top: 28px;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 2px solid #e8eaed;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+  border: 3px solid #667eea;
+  background: linear-gradient(to bottom, #ffffff, #fafbfc);
 }
 
 .timeline-card :deep(.el-card__header) {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   font-weight: 600;
   font-size: 18px;
   padding: 20px 28px;
   letter-spacing: 0.5px;
-  color: #2d3748;
+  color: white;
+  border-bottom: none;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.timeline-header .el-button {
+  color: white;
+  font-weight: 600;
+}
+
+.timeline-header .el-button:hover {
+  color: #ffd04b;
+}
+
+/* 展开动画 */
+.timeline-expand-enter-active {
+  animation: timeline-expand-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-expand-leave-active {
+  animation: timeline-expand-out 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes timeline-expand-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scaleY(0.8);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 1000px;
+  }
+}
+
+@keyframes timeline-expand-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 1000px;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px) scaleY(0.8);
+    max-height: 0;
+  }
 }
 
 .capacity-hint {
@@ -574,6 +663,107 @@ onMounted(() => {
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 20px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .room-booking-page {
+    padding: 16px;
+  }
+  
+  .header-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+  }
+  
+  .header-card :deep(.el-card__header) {
+    padding: 16px 20px;
+  }
+  
+  .header-card :deep(.el-card__body) {
+    padding: 16px 20px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .card-header .el-button {
+    width: 100%;
+  }
+  
+  .intro {
+    font-size: 14px;
+  }
+  
+  .rooms-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .room-card {
+    border-radius: 12px;
+    border-width: 2px;
+  }
+  
+  .room-header .el-icon {
+    font-size: 36px;
+  }
+  
+  .room-header h3 {
+    font-size: 18px;
+  }
+  
+  .room-details {
+    padding: 0 12px;
+  }
+  
+  .room-details p {
+    font-size: 14px;
+  }
+  
+  .room-details .description {
+    font-size: 13px;
+  }
+  
+  .timeline-wrapper {
+    margin: 0 0 16px 0;
+  }
+  
+  .timeline-card {
+    border-radius: 12px;
+    border-width: 2px;
+  }
+  
+  .timeline-card :deep(.el-card__header) {
+    padding: 16px 20px;
+    font-size: 16px;
+  }
+  
+  .timeline-header {
+    font-size: 16px;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 20px 16px;
+  }
+}
+
+/* 平板适配 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .rooms-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 大屏幕适配 */
+@media (min-width: 1400px) {
+  .rooms-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 </style>
 

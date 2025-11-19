@@ -172,5 +172,70 @@ onMounted(() => {
   color: #909399;
   font-size: 14px;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .home {
+    padding: 0;
+  }
+  
+  .welcome-card {
+    margin-bottom: 16px;
+  }
+  
+  .card-header {
+    font-size: 16px;
+    gap: 8px;
+  }
+  
+  .intro {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .stats-row {
+    margin-top: 16px;
+  }
+  
+  .stats-row :deep(.el-col) {
+    margin-bottom: 16px;
+  }
+  
+  .feature-row {
+    margin-top: 16px;
+  }
+  
+  .feature-row :deep(.el-col) {
+    margin-bottom: 12px;
+  }
+  
+  .feature-card {
+    padding: 24px 16px;
+  }
+  
+  .feature-card :deep(.el-icon) {
+    font-size: 40px !important;
+  }
+  
+  .feature-card h3 {
+    font-size: 16px;
+    margin: 12px 0 8px;
+  }
+  
+  .feature-card p {
+    font-size: 13px;
+  }
+}
+
+/* 平板适配 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .feature-card {
+    padding: 28px 18px;
+  }
+  
+  .feature-card :deep(.el-icon) {
+    font-size: 42px !important;
+  }
+}
 </style>
 

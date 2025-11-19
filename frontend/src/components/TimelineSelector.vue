@@ -252,6 +252,14 @@ watch(() => props.room, () => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .timeline-selector {
+    padding: 16px;
+    border-radius: 12px;
+  }
+}
+
 .room-info {
   margin-bottom: 28px;
   padding-bottom: 20px;
@@ -685,6 +693,202 @@ watch(() => props.room, () => {
   letter-spacing: 0.5px;
   padding: 12px 24px;
   border-radius: 8px;
+}
+
+/* 移动端样式优化 */
+@media (max-width: 768px) {
+  .room-info {
+    margin-bottom: 16px;
+    padding: 16px 12px;
+  }
+  
+  .room-info h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  
+  .room-info p {
+    font-size: 13px;
+  }
+  
+  .date-selector {
+    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .date-selector :deep(.el-date-editor) {
+    width: 100% !important;
+  }
+  
+  .usage-hint {
+    padding: 10px 12px;
+    font-size: 12px;
+    text-align: center;
+  }
+  
+  .usage-hint .el-icon {
+    font-size: 14px;
+  }
+  
+  .timeline-container {
+    margin-bottom: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .time-labels {
+    min-width: 100%;
+    padding: 0 2px;
+  }
+  
+  .time-label {
+    font-size: 11px;
+    min-width: 40px;
+  }
+  
+  .timeline-track {
+    min-width: 100%;
+    height: 100px;
+    touch-action: none;
+  }
+  
+  .time-cell {
+    min-width: 20px;
+  }
+  
+  .cell-time {
+    font-size: 9px;
+    bottom: 2px;
+  }
+  
+  /* 预约块在移动端的优化 */
+  .booked-slot {
+    top: 2px;
+    height: calc(100% - 4px);
+    border-radius: 6px;
+  }
+  
+  .booking-content {
+    padding: 6px 8px;
+  }
+  
+  .booking-header {
+    font-size: 11px;
+    gap: 4px;
+  }
+  
+  .booking-time {
+    font-size: 9px;
+  }
+  
+  .booking-purpose {
+    font-size: 9px;
+  }
+  
+  /* 选择区域在移动端的优化 */
+  .selected-slot,
+  .preview-slot {
+    top: 2px;
+    height: calc(100% - 4px);
+    border-radius: 6px;
+    border-width: 2px;
+  }
+  
+  .selection-content,
+  .preview-content {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  
+  .selection-icon {
+    font-size: 16px;
+  }
+  
+  .selection-time,
+  .preview-time {
+    font-size: 11px;
+  }
+  
+  .selection-duration,
+  .preview-duration {
+    font-size: 9px;
+  }
+  
+  /* 第一次点击标记 */
+  .marker-dot {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .marker-time {
+    top: -28px;
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+  
+  /* 过去时间段 */
+  .past-time-slot {
+    border-right-width: 2px;
+  }
+  
+  .slot-icon {
+    font-size: 20px;
+  }
+  
+  .slot-text {
+    font-size: 11px;
+  }
+  
+  /* 选择信息区域 */
+  .selection-info {
+    margin-top: 16px;
+    padding: 16px 12px;
+  }
+  
+  .action-buttons {
+    margin-top: 12px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+}
+
+/* 平板适配 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .timeline-selector {
+    padding: 24px;
+  }
+  
+  .room-info h3 {
+    font-size: 20px;
+  }
+  
+  .timeline-track {
+    height: 110px;
+  }
+  
+  .time-label {
+    font-size: 12px;
+  }
+}
+
+/* 横屏适配 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .timeline-track {
+    height: 80px;
+  }
+  
+  .usage-hint {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
 }
 </style>
 
