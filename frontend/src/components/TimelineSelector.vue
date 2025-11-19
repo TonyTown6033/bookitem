@@ -625,19 +625,20 @@ const handleTimelineClickMobile = (event, row) => {
   const minutes = Math.round(ratio * 8 * 60 / 30) * 30 // 8小时
   const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
   
-  // 如果已经有选中的区间，清除并开始新的选择
+  // 如果已经有选中的区间，清除旧选择并开始新选择
   if (selectedSlot.value) {
-    // 清除旧的选择
+    // 清除旧的选择（带淡出动画）
     selectedSlot.value = null
     selectionStart.value = null
     selectionEnd.value = null
-    mobileFirstClick.value = null
-    mobileSecondClick.value = null
     
-    // 开始新的第一次点击
-    firstClickPoint.value = clickTime
-    firstClickInRow.value = row
-    mobileFirstClick.value = clickTime
+    // 延迟一点开始新选择，让清除动画更明显
+    setTimeout(() => {
+      mobileFirstClick.value = clickTime
+      mobileSecondClick.value = null
+      firstClickPoint.value = clickTime
+      firstClickInRow.value = row
+    }, 150)
   }
   // 如果是第一次点击
   else if (!firstClickPoint.value) {
@@ -683,19 +684,20 @@ const handleTouchEnd = (event, row) => {
   const minutes = Math.round(ratio * 8 * 60 / 30) * 30
   const clickTime = new Date(periodStart.getTime() + minutes * 60 * 1000)
   
-  // 如果已经有选中的区间，清除并开始新的选择
+  // 如果已经有选中的区间，清除旧选择并开始新选择
   if (selectedSlot.value) {
-    // 清除旧的选择
+    // 清除旧的选择（带淡出动画）
     selectedSlot.value = null
     selectionStart.value = null
     selectionEnd.value = null
-    mobileFirstClick.value = null
-    mobileSecondClick.value = null
     
-    // 开始新的第一次点击
-    firstClickPoint.value = clickTime
-    firstClickInRow.value = row
-    mobileFirstClick.value = clickTime
+    // 延迟一点开始新选择，让清除动画更明显
+    setTimeout(() => {
+      mobileFirstClick.value = clickTime
+      mobileSecondClick.value = null
+      firstClickPoint.value = clickTime
+      firstClickInRow.value = row
+    }, 150)
   }
   // 如果是第一次点击
   else if (!firstClickPoint.value) {
