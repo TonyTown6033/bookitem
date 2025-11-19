@@ -78,7 +78,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "🚀 启动前端服务..."
-npm run dev > frontend.log 2>&1 &
+npm run dev -- --host 0.0.0.0 > frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo "✅ 前端服务启动成功 (PID: $FRONTEND_PID) - http://localhost:5173"
 
