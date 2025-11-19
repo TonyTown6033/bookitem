@@ -13,6 +13,10 @@
         :disabled-date="disabledDate"
         @change="loadBookings"
       />
+      <div class="usage-hint">
+        <el-icon><InfoFilled /></el-icon>
+        <span>点击时间轴两次选择时间区间（第一次确定起点，第二次确定终点）</span>
+      </div>
     </div>
 
     <div class="timeline-container">
@@ -25,10 +29,9 @@
 
       <div 
         class="timeline-track"
-        @mousedown="startSelection"
-        @mousemove="updateSelection"
-        @mouseup="endSelection"
-        @mouseleave="cancelSelection"
+        @click="handleTimelineClick"
+        @mousemove="handleTimelineMove"
+        @mouseleave="previewEnd = null"
       >
         <!-- 时间格子背景（48个半小时格子） -->
         <div class="time-cells">
@@ -80,9 +83,36 @@
           </div>
         </div>
 
-        <!-- 当前选择的区间（优雅蓝色） -->
+        <!-- 第一次点击的标记点 -->
         <div
-          v-if="selecting || selectedSlot"
+          v-if="firstClickPoint && !selectedSlot"
+          class="first-click-marker"
+          :style="getMarkerStyle(firstClickPoint)"
+        >
+          <div class="marker-dot"></div>
+          <div class="marker-time">{{ formatTime(firstClickPoint) }}</div>
+        </div>
+
+        <!-- 预览选择区间（第一次点击后鼠标移动） -->
+        <div
+          v-if="firstClickPoint && previewEnd && !selectedSlot"
+          class="preview-slot"
+          :class="{ invalid: !isValidSelection }"
+          :style="getSlotStyle(selectionStart, selectionEnd)"
+        >
+          <div class="preview-content">
+            <span class="preview-time">
+              {{ formatTime(selectionStart) }} - {{ formatTime(selectionEnd) }}
+            </span>
+            <span class="preview-duration">
+              {{ getSelectionDuration() }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 最终选择的区间 -->
+        <div
+          v-if="selectedSlot"
           class="selected-slot"
           :class="{ invalid: !isValidSelection }"
           :style="getSlotStyle(selectionStart, selectionEnd)"
@@ -123,7 +153,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Clock, UserFilled, Calendar } from '@element-plus/icons-vue'
+import { Clock, UserFilled, Calendar, InfoFilled } from '@element-plus/icons-vue'
 
 const props = defineProps({
   room: {
@@ -144,6 +174,8 @@ const selectedSlot = ref(null)
 const selectionStart = ref(null)
 const selectionEnd = ref(null)
 const mouseDownTime = ref(null)
+const firstClickPoint = ref(null) // 第一次点击的点
+const previewEnd = ref(null) // 鼠标移动时的预览终点
 
 // 计算过去的时间段
 const pastTimeSlot = computed(() => {
@@ -229,62 +261,89 @@ const disabledDate = (time) => {
   return time.getTime() < Date.now() - 8.64e7
 }
 
-// 开始选择时间段
-const startSelection = (e) => {
-  const rect = e.currentTarget.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const time = getTimeFromPosition(x, rect.width)
+// 处理时间轴点击
+const handleTimelineClick = (e) => {
+  if (!selectedDate.value) return
   
-  mouseDownTime.value = time
-  selectionStart.value = time
-  selectionEnd.value = time
-  selecting.value = true
-  selectedSlot.value = null
-}
-
-// 更新选择
-const updateSelection = (e) => {
-  if (!selecting.value) return
+  const timelineRect = e.currentTarget.getBoundingClientRect()
+  const x = e.clientX - timelineRect.left
+  const time = getTimeFromPosition(x, timelineRect.width)
   
-  const rect = e.currentTarget.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const time = getTimeFromPosition(x, rect.width)
-  
-  if (time > mouseDownTime.value) {
-    selectionStart.value = mouseDownTime.value
-    selectionEnd.value = time
-  } else {
+  // 如果是第一次点击
+  if (!firstClickPoint.value) {
+    firstClickPoint.value = time
     selectionStart.value = time
-    selectionEnd.value = mouseDownTime.value
+    selectionEnd.value = time
+    selecting.value = true
+    selectedSlot.value = null
+    ElMessage.info('请点击第二个位置确定时间区间', { duration: 2000 })
+  } else {
+    // 第二次点击，确定区间
+    let start = firstClickPoint.value
+    let end = time
+    
+    // 确保开始时间小于结束时间
+    if (start > end) {
+      [start, end] = [end, start]
+    }
+    
+    // 检查最小时长（30分钟）
+    const minDuration = 30 * 60 * 1000 // 30分钟
+    if (end - start < minDuration) {
+      ElMessage.warning('预约时长至少为30分钟')
+      clearSelection()
+      return
+    }
+    
+    selectionStart.value = start
+    selectionEnd.value = end
+    
+    if (isValidSelection.value) {
+      selectedSlot.value = {
+        start: start,
+        end: end
+      }
+      // 完成选择后清除第一次点击的状态
+      firstClickPoint.value = null
+      previewEnd.value = null
+      selecting.value = false
+    } else {
+      ElMessage.warning('所选时间段有冲突，请重新选择')
+      clearSelection()
+    }
   }
 }
 
-// 结束选择
-const endSelection = () => {
-  if (!selecting.value) return
+// 处理鼠标移动（显示预览）
+const handleTimelineMove = (e) => {
+  if (!firstClickPoint.value || !selectedDate.value) return
   
-  selecting.value = false
+  const timelineRect = e.currentTarget.getBoundingClientRect()
+  const x = e.clientX - timelineRect.left
+  const time = getTimeFromPosition(x, timelineRect.width)
   
-  // 最小选择30分钟（半小时）
-  const duration = (selectionEnd.value - selectionStart.value) / (1000 * 60)
-  if (duration < 30) {
-    ElMessage.warning('预约时长至少30分钟（半小时）')
-    clearSelection()
-    return
+  previewEnd.value = time
+  
+  // 更新预览区间
+  let start = firstClickPoint.value
+  let end = time
+  
+  if (start > end) {
+    [start, end] = [end, start]
   }
   
-  selectedSlot.value = {
-    start: selectionStart.value,
-    end: selectionEnd.value
-  }
+  selectionStart.value = start
+  selectionEnd.value = end
 }
 
-// 取消选择
+// 取消选择（点击外部或ESC键）
 const cancelSelection = () => {
-  if (selecting.value) {
-    selecting.value = false
-    clearSelection()
-  }
+  firstClickPoint.value = null
+  previewEnd.value = null
+  selecting.value = false
+  selectionStart.value = null
+  selectionEnd.value = null
+  selectedSlot.value = null
 }
 
 // 清除选择
@@ -292,6 +351,9 @@ const clearSelection = () => {
   selectedSlot.value = null
   selectionStart.value = null
   selectionEnd.value = null
+  firstClickPoint.value = null
+  previewEnd.value = null
+  selecting.value = false
 }
 
 // 确认预约
@@ -331,6 +393,21 @@ const getSlotStyle = (start, end) => {
   return {
     left: `${left}%`,
     width: `${width}%`
+  }
+}
+
+// 计算标记点样式
+const getMarkerStyle = (time) => {
+  if (!time || !selectedDate.value) return {}
+  
+  const dayStart = new Date(selectedDate.value)
+  dayStart.setHours(0, 0, 0, 0)
+  
+  const timeMinutes = (time - dayStart) / (1000 * 60)
+  const left = (timeMinutes / (24 * 60)) * 100
+  
+  return {
+    left: `${left}%`
   }
 }
 
@@ -417,6 +494,28 @@ watch(() => props.room, () => {
 
 .date-selector {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.usage-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #e6f2ff 0%, #f0f7ff 100%);
+  border-radius: 8px;
+  border: 1px solid #b8d4f1;
+  color: #4a7ba7;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.usage-hint .el-icon {
+  font-size: 16px;
+  color: #667eea;
 }
 
 .timeline-container {
@@ -663,6 +762,122 @@ watch(() => props.room, () => {
 
 .selection-duration {
   font-size: 11px;
+  color: #718096;
+  font-weight: 500;
+}
+
+/* 第一次点击标记点 */
+.first-click-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: markerPulse 1.5s ease-in-out infinite;
+}
+
+.marker-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3),
+              0 0 0 8px rgba(102, 126, 234, 0.15);
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.marker-time {
+  position: absolute;
+  top: -32px;
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
+  background: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+@keyframes markerPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3),
+                0 0 0 8px rgba(102, 126, 234, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(102, 126, 234, 0.4),
+                0 0 0 12px rgba(102, 126, 234, 0.2);
+  }
+}
+
+/* 预览选择区间 */
+.preview-slot {
+  position: absolute;
+  top: 4px;
+  height: calc(100% - 8px);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border: 2px dashed #667eea;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  pointer-events: none;
+  animation: previewBlink 1s ease-in-out infinite;
+}
+
+.preview-slot.invalid {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(229, 62, 62, 0.15) 100%);
+  border-color: #f56565;
+  border-style: dashed;
+}
+
+@keyframes previewBlink {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preview-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: #667eea;
+  letter-spacing: 0.3px;
+}
+
+.preview-slot.invalid .preview-time {
+  color: #f56565;
+}
+
+.preview-duration {
+  font-size: 10px;
   color: #718096;
   font-weight: 500;
 }
